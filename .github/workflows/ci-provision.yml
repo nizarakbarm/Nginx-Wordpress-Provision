@@ -14,7 +14,6 @@ on:
             - 'support/**'
     
 jobs:
-
   nginx_wordpress:
           name: provision nginx and wordpress to ec2-provision
           runs-on: ubuntu-latest
@@ -73,7 +72,7 @@ jobs:
                   ssh -p $PORT_SSH $USERNAME_VM@$i sudo /root/script/main.sh -d "$DOMAIN_NAME" -r "$ROOT_PASSWORD" -ud "$USERNAME_DB" -db "$DB_NAME" -t "$TITLE" -u "$USERNAME" -p "$PASSWORD" -e "$EMAIL" --github-token "$COMPOSER_TOKEN"
                   echo $?
                 done
-    test_curl:
+  test_curl:
       runs-on: ubuntu-latest
       needs: [nginx_wordpress]
       permissions:
