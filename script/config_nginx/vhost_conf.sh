@@ -62,7 +62,13 @@ wp --path="$DOC_ROOT" secure block-php-execution all --server=nginx --file-path=
 #wp --path="$DOC_ROOT" secure disable-directory-browsing --server=nginx --file-path=/etc/nginx/wp-secure.conf --allow-root
 chown root:root /etc/nginx/wp-secure.conf && chmod 644 /etc/nginx/wp-secure.conf
 
-./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL"
+if [ -z "$(s3cmd -c .s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/fullchain.pem)" ] && [ -z  "$(s3cmd -c .s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/privkey.pem)" ]; then
+ ./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL"
+ s3cmd -c .s3cfg_certificate_object put -r "/etc/letsencrypt/live/$DOMAIN_NAME/*" s3://certbucket/$DOMAIN_NAME/
+else
+ mkdir -p "/etc/letsencrypt/live/$DOMAIN_NAME"
+ s3cmd -c .s3cfg_certificate_object get -r "s3://certbucket/$DOMAIN_NAME/*" "/etc/letsencrypt/live/$DOMAIN_NAME/"
+fi
 # if [[ $? -ne 0 ]]; then
 # 	echo "Warning: install ssl certbot script fail!"
 # 	exit 1
