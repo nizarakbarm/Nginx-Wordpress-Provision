@@ -119,7 +119,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # Generate config file
-wp --path="$WP_DIR" config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --allow-root
+wp --path="$WP_DIR" config create --dbname="$db_name" --dbuser="$db_user" --dbpass="$db_pass" --dbprefix="wp" --allow-root
 if [[ $? -ne 0 ]]; then
     echo "Warning: wp config create failed!"
     exit 1
