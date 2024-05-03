@@ -1,0 +1,93 @@
+name: 'CI Provision'
+on:
+    pull_request:
+        types:
+            - opened
+            - reopened
+        branches:
+            - main
+            - develop
+            - 'feature/**'
+            - 'bugfix/**'
+            - 'release/**'
+            - 'hotfix/**'
+            - 'support/**'
+    
+jobs:
+
+  nginx_wordpress:
+          name: provision nginx and wordpress to ec2-provision
+          runs-on: ubuntu-latest
+          env:
+            SECRET_KEY: ${{ secrets.SECRET_KEY }}
+            ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+            S3_HOST: ${{ secrets.S3_HOST }}
+            S3_ALLOWED_IPS: ${{ vars.S3_ALLOWED_IPS }}
+            S_KEY: ${{ secrets.S_KEY }}
+            PUBLIC_IPS: ${{ vars.PUBLIC_IPS }}
+            PORT_SSH: ${{ secrets.PORT_SSH }}
+            USERNAME_VM: ${{ secrets.USERNAME_EC2 }}
+            ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
+            DB_NAME: ${{ secrets.DB_NAME }}
+            USERNAME_DB: ${{ secrets.USERNAME_DB }}
+            USERNAME: ${{ secrets.USERNAME }}
+            PASSWORD: ${{ secrets.PASSWORD }}
+            DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+            TITLE: ${{ vars.TITLE }}
+            EMAIL: ${{ secrets.EMAIL }}
+            COMPOSER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          permissions:
+            contents: read
+            pull-requests: write
+          steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: deploy using ssh or rsync
+              run: |
+                sleep 5
+                eval `ssh-agent`
+                ssh-add - <<< "${S_KEY}"
+                echo "Appending ssh-keyscan result to known-hosts"
+                mkdir ~/.ssh
+                chmod 700 ~/.ssh
+                ssh-keyscan -H -p $PORT_SSH $PUBLIC_IP >> ~/.ssh/known_hosts
+                chmod 600 ~/.ssh/known_hosts
+                ls -l ~/.ssh/known_hosts
+                echo -e "Host *\n\tGSSAPIAuthentication yes\n\tServerAliveInterval 600\n\tTCPKeepAlive yes\n\tIPQoS=throughput" > ~/.ssh/config
+                chmod 600 ~/.ssh/config
+                for i in "$PUBLIC_IPS"; do
+                  echo "Deploy scripts to $i..."
+                  rsync -avzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/"
+                  [[ $? -ne 0 ]] && echo "Warning: rsync failed!" 
+                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
+                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
+                  [[ $? -ne 0 ]] && echo "Warning: ssh executing mv failed!"
+                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo chown root:root /root/script -R"
+                  [[ $? -ne 0 ]] && echo "Warning: ssh executing chown failed!"
+                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo find /root/script -type f -exec chmod 755 {} +"
+                  [[ $? -ne 0 ]] && echo "Warning: ssh executing find failed!"
+
+                  ssh -p $PORT_SSH $USERNAME_VM@$i sudo /root/script/s3_certificate/deploy_bucket_for_saving_certificate.sh -a "$ACCESS_KEY" -s "$SECRET_KEY" --host "$S3_HOST" --ips $S3_ALLOWED_IPS
+                  [[ $? -ne 0 ]] && echo "Warning: setup s3 failed!"
+
+                  ssh -p $PORT_SSH $USERNAME_VM@$i sudo /root/script/main.sh -d "$DOMAIN_NAME" -r "$ROOT_PASSWORD" -ud "$USERNAME_DB" -db "$DB_NAME" -t "$TITLE" -u "$USERNAME" -p "$PASSWORD" -e "$EMAIL" --github-token "$COMPOSER_TOKEN"
+                  echo $?
+                done
+    test_curl:
+      runs-on: ubuntu-latest
+      needs: [nginx_wordpress]
+      permissions:
+          contents: read
+          pull-requests: write
+      steps:
+        - name: test curl TTFB
+          env:
+            DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+          run: |
+            curl -w "Connect time: %{time_connect}\nTime to first byte: %{time_starttransfer}\nTotal: %{time_total}" -o /dev/null -sL "http://$DOMAIN_NAME"
+        - name: test curl other timings
+          env:
+            DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+          run: |
+            curl -w "time_appconnect: %{time_appconnect}\ntime_connect: %{time_connect}\ntime_namelookup: %{time_namelookup}\ntime_pretransfer: %{time_pretransfer}\ntime_redirect: %{time_redirect}\ntime_starttransfer: %{time_starttransfer}\ntime_total: %{time_total}\n" -o /dev/null -sL "http://$DOMAIN_NAME"
+
