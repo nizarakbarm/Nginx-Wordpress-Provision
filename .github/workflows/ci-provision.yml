@@ -59,7 +59,7 @@ jobs:
                 chmod 600 ~/.ssh/config
                 for i in $PUBLIC_IPS; do
                   echo "Deploy scripts to $i..."
-                  rsync -avzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/"
+                  rsync -PavzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/"
                   [[ $? -ne 0 ]] && echo "Warning: rsync failed!" 
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
