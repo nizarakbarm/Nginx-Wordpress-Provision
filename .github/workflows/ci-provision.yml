@@ -64,9 +64,9 @@ jobs:
 
                   cat log_rsync
 
-                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
-                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
-                  [[ $? -ne 0 ]] && echo "Warning: ssh executing mv failed!"
+                  # ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
+                  # ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
+                  # [[ $? -ne 0 ]] && echo "Warning: ssh executing mv failed!"
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo chown root:root /root/script -R"
                   [[ $? -ne 0 ]] && echo "Warning: ssh executing chown failed!"
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo find /root/script -type f -exec chmod 755 {} +"
