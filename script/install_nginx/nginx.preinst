@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# creating nginx group if he isn't already there
+if ! getent group nginx >/dev/null; then
+    groupadd --system nginx >/dev/null
+fi
+
+# creating nginx user if he isn't already there
+if ! getent passwd nginx >/dev/null; then
+    useradd \
+    --system \
+    --gid nginx \
+    --no-create-home \
+    --home /nonexistent \
+    --comment "nginx user" \
+    --shell /usr/sbin/nologin \
+    nginx  >/dev/null
+fi

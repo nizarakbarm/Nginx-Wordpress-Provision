@@ -1,0 +1,117 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" != "configure" ]; then
+    exit 0
+fi
+
+# create directory for ssl
+if [ ! -d /etc/nginx/ssl ]; then
+    mkdir /etc/nginx/ssl
+fi
+
+#linking modules directory
+if [ ! -d "/etc/nginx/modules" ] || [ ! -L "/etc/nginx/modules" ]; then
+    ln -s /usr/lib/nginx/modules /etc/nginx
+fi
+
+# create directory for vhost
+if [ ! -d /etc/nginx/sites-available ]; then
+    mkdir /etc/nginx/sites-available
+    chmod 755 /etc/nginx/sites-available
+fi
+if [ ! -d /etc/nginx/sites-enabled ]; then
+    mkdir /etc/nginx/sites-enabled
+    chmod 755 /etc/nginx/sites-enabled
+fi
+
+# CIS Nginx 2.3.1: ensure nginx directories owned by root user and root group
+if [[ $(stat -c "%U:%G" /etc/nginx) != "root:root" ]]; then
+    chown -R root:root /etc/nginx
+fi
+# CIS Nginx 2.3.2: ensure nginx directories permissions is 755
+if [ -n $(find /etc/nginx -type d -exec stat -Lc "%n %a" {} + | grep -v 755) ]; then
+    find /etc/nginx -type d -exec chmod go-w {} +
+fi
+
+# CIS Nginx 2.3.4: ensure the nginx process ID file is secured
+if [ -f "/var/run/nginx.pid" ]; then
+    if [ -n "$(pgrep -f nginx)" ] && [ -z "$(stat -L -c "%U:%G"  /var/run/nginx.pid && stat -L -c "%a" /var/run/nginx.pid | tr  "\n" "," | grep "root:root,644," )"  ]; then
+        chown root:root /var/run/nginx.pid
+        chmod u-x,go-wx /var/run/nginx.pid
+    fi
+fi
+
+# function used to check subdir inside /var/cache/nginx
+check_subdir_var_cache_nginx() {
+    # $1 argument which is subdir
+    if [ -d "/var/cache/nginx/$1" ]; then
+        chown nginx:root "/var/cache/nginx/$1"
+        chmod 700 "/var/cache/nginx/$1"
+    else
+        mkdir /var/cache/nginx/$1
+        chown nginx:root "/var/cache/nginx/$1"
+        chmod 755 "/var/cache/nginx/$1"
+fi
+}
+
+
+# Create /var/cache/nginx
+if [ -d "/var/cache/nginx" ]; then
+    chown root:root /var/cache/nginx
+    chmod 755 /var/cache/nginx
+else
+    mkdir /var/cache/nginx
+    chown root:root /var/cache/nginx
+    chmod 755 /var/cache/nginx
+fi
+
+# check subdir inside /var/cache/nginx
+for i in fastcgi_tmp proxy_temp scgi_temp uwsgi_temp; do
+    check_subdir_var_cache_nginx $i
+done
+
+
+# Touch and set permisions on default log files on installation
+if [ -z "$2" ]; then
+    if [ -d /var/log/nginx ]; then
+        if [ ! -e /var/log/nginx/access.log ]; then
+            touch /var/log/nginx/access.log
+            chmod 640 /var/log/nginx/access.log
+            chown nginx:adm /var/log/nginx/access.log
+        fi
+
+        if [ ! -e /var/log/nginx/error.log ]; then
+            touch /var/log/nginx/error.log
+            chmod 640 /var/log/nginx/error.log
+            chown nginx:adm /var/log/nginx/error.log
+        fi
+    fi
+fi
+
+if [ ! -d "/usr/share/nginx" ]; then
+    mkdir /usr/share/nginx
+    chown root:root /usr/share/nginx
+    chmod 755 /usr/share/nginx
+fi
+
+#remove all .default config
+rm -f /etc/nginx/*.default
+
+#if [ -x "/etc/init.d/nginx" ]; then
+#    if [ -f "/var/run/nginx.pid" ] && kill -0 `cat /var/run/nginx.pid` >/dev/null; then
+#        /etc/init.d/nginx upgrade || echo \
+#            "Binary upgrade failed, please check nginx's error.log"
+#    else
+#        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+#            invoke-rc.d nginx start || true
+#        else
+#            /etc/init.d/nginx start || true
+#        fi
+#    fi
+#fi
+
+#DEBHELPER#
+
+exit 0
