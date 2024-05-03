@@ -49,7 +49,7 @@ jobs:
                 echo "Appending ssh-keyscan result to known-hosts"
                 mkdir ~/.ssh
                 chmod 700 ~/.ssh
-                for i in "$PUBLIC_IPS"; do
+                for i in $PUBLIC_IPS; do
                   ssh-keyscan -H -p $PORT_SSH $i >> ~/.ssh/known_hosts
                 done
 
@@ -57,7 +57,7 @@ jobs:
                 ls -l ~/.ssh/known_hosts
                 echo -e "Host *\n\tGSSAPIAuthentication yes\n\tServerAliveInterval 600\n\tTCPKeepAlive yes\n\tIPQoS=throughput" > ~/.ssh/config
                 chmod 600 ~/.ssh/config
-                for i in "$PUBLIC_IPS"; do
+                for i in $PUBLIC_IPS; do
                   echo "Deploy scripts to $i..."
                   rsync -avzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/"
                   [[ $? -ne 0 ]] && echo "Warning: rsync failed!" 
