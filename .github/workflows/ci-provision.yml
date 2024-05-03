@@ -26,7 +26,7 @@ jobs:
             S_KEY: ${{ secrets.S_KEY }}
             PUBLIC_IPS: ${{ vars.PUBLIC_IPS }}
             PORT_SSH: ${{ secrets.PORT_SSH }}
-            USERNAME_VM: ${{ secrets.USERNAME_EC2 }}
+            USERNAME_VM: ${{ secrets.USERNAME_VM }}
             ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
             DB_NAME: ${{ secrets.DB_NAME }}
             USERNAME_DB: ${{ secrets.USERNAME_DB }}
