@@ -59,8 +59,12 @@ set -- "${POSITIONAL_ARGS[@]}" #restore positional parameters--
 HOST_BUCKET="%(bucket)s.$HOST"
 #echo "$HOST_BUCKET"
 
+# update & upgrade & install s3cmd
 sed -i "/#\$nrconf{restart} = 'i';/s/.*/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf
 sed -i "/#\$nrconf{kernelhints} = -1;/s/.*/\$nrconf{kernelhints} = -1;/" /etc/needrestart/needrestart.conf
+
+apt-get update -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --force-yes -y --allow-change-held-packages && apt-get upgrade -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --force-yes -y --allow-change-held-packages && apt-get install -y build-essential
+
 apt -o Apt::Get::Assume-Yes=true install s3cmd > /dev/null 2>&1
 if [[ $? -eq 0 ]] 
 then
