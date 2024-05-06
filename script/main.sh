@@ -170,14 +170,14 @@ PASSWORD_DB="$(./mysql_and_php_dependencies/mysql_and_php.sh -u "$USERNAME_DB" -
 [[ $? -ne 0 ]] && EXIT_CODE=1 && ERROR_MESSAGE+=" [Setup FPM Pool] "
 
 
-if [[ $EXIT_CODE -ne 0 ]]; then
-    echo "Warning: $ERROR_MESSAGE"
-    echo "Doing Cleanup"
-    systemctl stop nginx
-    apt purge mysql-server* -y; rm -rf /var/lib/mysql /usr/sbin/nginx /var/cache/nginx /usr/local/bin/wp /root/.my.cnf /etc/systemd/system/nginx.service /usr/share/nginx > /dev/null 2>&1
-    systemctl daemon-reload
-    echo "Doing Cleanup Done"
-    exit 1
-fi
+# if [[ $EXIT_CODE -ne 0 ]]; then
+#     echo "Warning: $ERROR_MESSAGE"
+#     echo "Doing Cleanup"
+#     systemctl stop nginx
+#     apt purge mysql-server* -y; rm -rf /var/lib/mysql /usr/sbin/nginx /var/cache/nginx /usr/local/bin/wp /root/.my.cnf /etc/systemd/system/nginx.service /usr/share/nginx > /dev/null 2>&1
+#     systemctl daemon-reload
+#     echo "Doing Cleanup Done"
+#     exit 1
+# fi
 
 exit 0
