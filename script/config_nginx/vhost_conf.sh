@@ -283,7 +283,7 @@ server {
 		return 404;
 	}
 }
-	EOF
+EOF
 
 	nginx_test=$(nginx -t 2>&1)
 	if [[ $nginx_test =~ ok || $nginx_test =~ successful ]]; then
