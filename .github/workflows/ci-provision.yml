@@ -15,7 +15,7 @@ on:
     
 jobs:
   nginx_wordpress:
-          name: provision nginx and wordpress to ec2-provision
+          name: provision nginx and wordpress to vm nevacloud
           runs-on: ubuntu-latest
           env:
             SECRET_KEY: ${{ secrets.SECRET_KEY }}
