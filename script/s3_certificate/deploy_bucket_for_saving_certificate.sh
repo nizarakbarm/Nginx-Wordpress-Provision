@@ -59,7 +59,7 @@ set -- "${POSITIONAL_ARGS[@]}" #restore positional parameters--
 HOST_BUCKET="%(bucket)s.$HOST"
 #echo "$HOST_BUCKET"
 
-# update & upgrade & install s3cmd
+# update & upgrade & install s3cmd/etc/letsencrypt/live/wp4.nizarakbar.com/fullchain.pem
 export DEBIAN_FRONTEND=noninteractive
 sed -i "/#\$nrconf{restart} = 'i';/s/.*/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf
 sed -i "/#\$nrconf{kernelhints} = -1;/s/.*/\$nrconf{kernelhints} = -1;/" /etc/needrestart/needrestart.conf

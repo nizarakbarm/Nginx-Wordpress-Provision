@@ -6,6 +6,7 @@
 # $2 is email
 domain="$1"
 email="$2"
+docroot="$3"
 
 if [ -n "$(pgrep -f nginx)" ]; then
     systemctl stop nginx
@@ -32,4 +33,10 @@ if [ ! -f "/usr/local/bin/certbot" ]; then
         pip --no-cache-dir install certbot
     fi
 fi
-/usr/local/bin/certbot certonly --standalone -d "$domain" -n --no-autorenew --agree-tos --email "$email" > /var/log/certbot.log 2>&1
+/usr/local/bin/certbot certonly --webroot -w "$docroot" -d "$domain" -n --no-autorenew --agree-tos --email "$email" > /var/log/certbot.log 2>&1; exitcode=$?
+
+if [[ "$exitcode"-eq 1 ]]; then
+    exit 1
+else
+    exit 0
+done
