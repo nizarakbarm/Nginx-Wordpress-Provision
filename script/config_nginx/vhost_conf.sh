@@ -156,6 +156,7 @@ if [[ $nginx_test =~ ok || $nginx_test =~ successful ]]; then
     echo "Info: The configuration is ok and Nginx test successful"
     # After know that test successfull, activate vhost
     ln -s /etc/nginx/sites-available/$DOMAIN_NAME.conf /etc/nginx/sites-enabled
+	/usr/bin/systemctl start nginx
 else
     echo "Error: configuration error and nginx test is not successful! Check configuration again"
     exit 1
@@ -176,7 +177,7 @@ fi
 
 # if ssl installation is success, then define vhost with ssl
 if [[ $exit_code_certbot -eq 0 ]]; then
-	systemctl stop nginx
+	/usr/bin/systemctl stop nginx
 	poolname=$(echo "$DOMAIN_NAME" | cut -d"." -f1)
 
 	#create vhost conf with the specified domain in  sites-available
