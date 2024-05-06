@@ -182,107 +182,107 @@ if [[ $exit_code_certbot -eq 0 ]]; then
 
 	#create vhost conf with the specified domain in  sites-available
 	cat <<EOF>/etc/nginx/sites-available/"$DOMAIN_NAME.conf"
-	include /etc/nginx/define_fastcgi_cache.conf;
-	include /etc/nginx/map_webp.conf;
-	server {
-		listen 80;
-		server_name $DOMAIN_NAME;
-		access_log /var/log/nginx/$DOMAIN_NAME.access.log;
+include /etc/nginx/define_fastcgi_cache.conf;
+include /etc/nginx/map_webp.conf;
+server {
+	listen 80;
+	server_name $DOMAIN_NAME;
+	access_log /var/log/nginx/$DOMAIN_NAME.access.log;
 
-		return 301 https://$DOMAIN_NAME\$request_uri;
-	}
-	server {
-		listen 443 quic reuseport;
-		listen 443 ssl;
-		http2 on;
+	return 301 https://$DOMAIN_NAME\$request_uri;
+}
+server {
+	listen 443 quic reuseport;
+	listen 443 ssl;
+	http2 on;
 
 
-		server_name $DOMAIN_NAME;
-		include /etc/nginx/ssl_secure.conf;
-		ssl_certificate /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem;
-		ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem;
-		access_log /var/log/nginx/$DOMAIN_NAME-ssl.access.log;
-		error_log /var/log/nginx/$DOMAIN_NAME-ssl.error.log;
+	server_name $DOMAIN_NAME;
+	include /etc/nginx/ssl_secure.conf;
+	ssl_certificate /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem;
+	access_log /var/log/nginx/$DOMAIN_NAME-ssl.access.log;
+	error_log /var/log/nginx/$DOMAIN_NAME-ssl.error.log;
 
-		root /usr/share/nginx/$DOMAIN_NAME;
-		index index.html index.htm index.php;
-		include /etc/nginx/fastcgi_cache_rules.conf;
-		include /etc/nginx/security_header.conf;
-		location / {
-			try_files \$uri \$uri/ /index.php\$args;  
+	root /usr/share/nginx/$DOMAIN_NAME;
+	index index.html index.htm index.php;
+	include /etc/nginx/fastcgi_cache_rules.conf;
+	include /etc/nginx/security_header.conf;
+	location / {
+		try_files \$uri \$uri/ /index.php\$args;  
 
-			# so browsers can redirect them to quic port
-			add_header alt-svc 'quic=":443"';
-			
-			add_header Alt-Svc 'h3=":443"; ma=86400';
-
-			# disable directory indexing
-			autoindex off;
-			# block author scanning
-			if (\$query_string ~ "author=\d+"){
-				return 403;
-			}
-		}
-
-		location ~ \.php\$ {
-			try_files \$uri =404;
-
-			include fastcgi_params;
-			
-			fastcgi_split_path_info ^(.+\\\\.php)(/.+)\$;
-			fastcgi_pass unix:/var/run/php8.1-fpm-$poolname.sock;
-			fastcgi_param SCRIPT_FILENAME \$document_root/\$fastcgi_script_name;
-			#fastcgi_index index.php;
-			fastcgi_cache_bypass \$skip_cache;
-			fastcgi_no_cache \$skip_cache;
-			fastcgi_cache WORDPRESS;
-			fastcgi_cache_valid 60m;
-			add_header X-Cache \$upstream_cache_status;
-			add_header alt-svc 'quic=":443"';
-			
-			add_header Alt-Svc 'h3=":443"; ma=86400';
+		# so browsers can redirect them to quic port
+		add_header alt-svc 'quic=":443"';
 		
-		}
-		location ~ /purge(/.*) {
-			add_header Alt-Svc 'h3=":443"; ma=86400';
-			fastcgi_cache_purge WORDPRESS "\$scheme\$request_method\$host\$1";
-		}
-		# WebP
-		location ~* ^/.+\.(png|gif|jpe?g)\$ {
-			#expires max;
-			add_header Cache-Control "max-age=604800, must-revalidate";
-			try_files \$uri\$webp_suffix \$uri =404;
-			#add_header Alt-Svc 'h3=":443"; ma=86400';
-		}
+		add_header Alt-Svc 'h3=":443"; ma=86400';
 
-		location ~* (ogg|ogv|svg|svgz|eot|otf|woff|webp|mp4|ttf|css|rss|atom|js|jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|exe|ppt|tar|mid|midi|wav|bpm|rtf)\$ {
-			#expires max;
-			add_header Cache-Control "max-age=604800, must-revalidate";
-
-			#add_header Alt-Svc 'h3=":443"; ma=86400';
-			log_not_found off;
-			access_log off;
-		}
-		location = /robots.txt {
-			add_header alt-svc 'quic=":443"';
-			add_header Alt-Svc 'h3=":443"; ma=86400';
-
-			access_log off;
-			log_not_found off;
-		}
-		location ~ /\.well-known\/acme-challenge {
-			allow all;
-		}
-
-		#include configuration of wp secure
-		include /etc/nginx/wp-secure.conf;
-
-		#CIS Benchmark Nginx: 2.5.4
-		location ~ /\. {
-			deny all;
-			return 404;
+		# disable directory indexing
+		autoindex off;
+		# block author scanning
+		if (\$query_string ~ "author=\d+"){
+			return 403;
 		}
 	}
+
+	location ~ \.php\$ {
+		try_files \$uri =404;
+
+		include fastcgi_params;
+		
+		fastcgi_split_path_info ^(.+\\\\.php)(/.+)\$;
+		fastcgi_pass unix:/var/run/php8.1-fpm-$poolname.sock;
+		fastcgi_param SCRIPT_FILENAME \$document_root/\$fastcgi_script_name;
+		#fastcgi_index index.php;
+		fastcgi_cache_bypass \$skip_cache;
+		fastcgi_no_cache \$skip_cache;
+		fastcgi_cache WORDPRESS;
+		fastcgi_cache_valid 60m;
+		add_header X-Cache \$upstream_cache_status;
+		add_header alt-svc 'quic=":443"';
+		
+		add_header Alt-Svc 'h3=":443"; ma=86400';
+	
+	}
+	location ~ /purge(/.*) {
+		add_header Alt-Svc 'h3=":443"; ma=86400';
+		fastcgi_cache_purge WORDPRESS "\$scheme\$request_method\$host\$1";
+	}
+	# WebP
+	location ~* ^/.+\.(png|gif|jpe?g)\$ {
+		#expires max;
+		add_header Cache-Control "max-age=604800, must-revalidate";
+		try_files \$uri\$webp_suffix \$uri =404;
+		#add_header Alt-Svc 'h3=":443"; ma=86400';
+	}
+
+	location ~* (ogg|ogv|svg|svgz|eot|otf|woff|webp|mp4|ttf|css|rss|atom|js|jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|exe|ppt|tar|mid|midi|wav|bpm|rtf)\$ {
+		#expires max;
+		add_header Cache-Control "max-age=604800, must-revalidate";
+
+		#add_header Alt-Svc 'h3=":443"; ma=86400';
+		log_not_found off;
+		access_log off;
+	}
+	location = /robots.txt {
+		add_header alt-svc 'quic=":443"';
+		add_header Alt-Svc 'h3=":443"; ma=86400';
+
+		access_log off;
+		log_not_found off;
+	}
+	location ~ /\.well-known\/acme-challenge {
+		allow all;
+	}
+
+	#include configuration of wp secure
+	include /etc/nginx/wp-secure.conf;
+
+	#CIS Benchmark Nginx: 2.5.4
+	location ~ /\. {
+		deny all;
+		return 404;
+	}
+}
 	EOF
 
 	nginx_test=$(nginx -t 2>&1)
