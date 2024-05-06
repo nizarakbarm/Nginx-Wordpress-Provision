@@ -35,8 +35,8 @@ if [ ! -f "/usr/local/bin/certbot" ]; then
 fi
 /usr/local/bin/certbot certonly --webroot -w "$docroot" -d "$domain" -n --no-autorenew --agree-tos --email "$email" > /var/log/certbot.log 2>&1; exitcode=$?
 
-if [[ "$exitcode"-eq 1 ]]; then
+if [[ "$exitcode" -eq 1 ]]; then
     exit 1
 else
     exit 0
-done
+fi
