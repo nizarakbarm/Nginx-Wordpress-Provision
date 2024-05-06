@@ -8,9 +8,9 @@ domain="$1"
 email="$2"
 docroot="$3"
 
-if [ -n "$(pgrep -f nginx)" ]; then
-    systemctl stop nginx
-fi
+# if [ -n "$(pgrep -f nginx)" ]; then
+#     systemctl stop nginx
+# fi
 
 if [ ! -f "/usr/local/bin/certbot" ]; then
     if [ -f pip ]; then 

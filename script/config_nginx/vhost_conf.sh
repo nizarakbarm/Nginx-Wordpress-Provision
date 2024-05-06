@@ -163,7 +163,7 @@ else
 fi
 
 if [ -z "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/fullchain.pem)" ] && [ -z  "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/privkey.pem)" ]; then
- ./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT"; exit_code_certbot=$?
+ ./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
  s3cmd -c ~/.s3cfg_certificate_object put -r "/etc/letsencrypt/live/$DOMAIN_NAME/*" s3://certbucket/$DOMAIN_NAME/
 else
  exit_code_certbot=0
