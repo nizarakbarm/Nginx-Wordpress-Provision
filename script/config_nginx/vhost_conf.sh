@@ -158,6 +158,7 @@ if [[ $nginx_test =~ ok || $nginx_test =~ successful ]]; then
     [ ! -f "/etc/nginx/sites-available/$DOMAIN_NAME" ] && ln -s /etc/nginx/sites-available/$DOMAIN_NAME.conf /etc/nginx/sites-enabled
 	sleep 3
 	/usr/bin/systemctl start nginx
+	sleep 3
 else
     echo "Error: configuration error and nginx test is not successful! Check configuration again"
     exit 1
