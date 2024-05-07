@@ -93,7 +93,7 @@ jobs:
             # check certificate is valid Let's Encrypt
             for i in $PUBLIC_IPS; do
               issuer_org=$(curl "https://$i:443" -H 'Host: $DOMAIN_NAME' -L -vvk -s 2>&1 | grep "issuer:" | sed -E "s/.*?issuer: C=US; O=(.*?); CN=R3\$/\1/g")
-              if [ -n "$issuer_org" ] && [[ "$issuer_org" == "Let's Encrypt"]]; then
+              if [ -n "$issuer_org" ] && [[ "$issuer_org" == "Let's Encrypt" ]]; then
                 echo "Certificate Issuer Organization: $issuer_org"
                 exit 0
               else
