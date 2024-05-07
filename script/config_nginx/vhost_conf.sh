@@ -164,31 +164,55 @@ else
     exit 1
 fi
 
-if [ -z "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/fullchain.pem)" ] && [ -z  "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/privkey.pem)" ]; then
- ./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
- sleep 3
+# install ssl using certbot then put to s3
+# get from s3 if there is a ssl inside the bucket
+if ! s3cmd -c ~/.s3cfg_certificate_object ls "s3://certbucket/$DOMAIN_NAME/" | grep -Pq "fullchain(.*?)?\.pem" && ! s3cmd -c ~/.s3cfg_certificate_object ls "s3://certbucket/$DOMAIN_NAME/" | grep -Pq "privkey(.*?)?\.pem"; then
+  # check if there is cert file and not expired
+  if [ -d "/etc/letsencrypt/archive/$DOMAIN_NAME/" ]; then
+	if [ -n "$(find "/etc/letsencrypt/archive/$DOMAIN_NAME/" -type f -regex ".*/fullchain.*\.pem$")"] && [ -n "$(find "/etc/letsencrypt/archive/$DOMAIN_NAME/" -type f -regex ".*/privkey.*\.pem$")"] ; then
+		notAfter=$(openssl x509 -in "/etc/letsencrypt/archive/$DOMAIN_NAME/fullchain1.pem"| openssl x509 -noout -dates | awk -F= '/notAfter/ {print $2}' | xargs -I {} date -d'{}' '+%s')
+		if [[ $notAfter -le $(date '%s') ]]; then
+			./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
+			sleep 3
+		fi
+	else
+		./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
+		sleep 3
+	fi
+  else
+	./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
+	sleep 3
+  fi
  s3cmd -c ~/.s3cfg_certificate_object put -r "/etc/letsencrypt/archive/$DOMAIN_NAME/" s3://certbucket/$DOMAIN_NAME/
 else
- exit_code_certbot=0
- mkdir -p "/etc/letsencrypt/archive/$DOMAIN_NAME"
- s3cmd -c ~/.s3cfg_certificate_object get -r "s3://certbucket/$DOMAIN_NAME/" "/etc/letsencrypt/archive/$DOMAIN_NAME/"
- find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "*chain*" -or -name "*cert*" -exec chmod 644 {} +
- find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "*priv*" -exec chmod 600 {} +
- mkdir -p "/etc/letsencrypt/live/$DOMAIN_NAME"
+ notAfter=$(s3cmd -c ~/.s3cfg_certificate_object ls "s3://certbucket/$DOMAIN_NAME/" | grep -P "fullchain(.*?)?\.pem" | awk '{print $4}' | xargs -I {} s3cmd --no-progress -c ~/.s3cfg_certificate_object get {} - | openssl x509 -noout -dates | awk -F= '/notAfter/ {print $2}' | xargs -I {} date -d'{}' '+%s')
+ if [[ $notAfter -le $(date '%s') ]]; then
+	./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
+	sleep 3
+	s3cmd -c ~/.s3cfg_certificate_object put -r "/etc/letsencrypt/archive/$DOMAIN_NAME/" s3://certbucket/$DOMAIN_NAME/
+ else
+	mkdir -p "/etc/letsencrypt/archive/$DOMAIN_NAME"
+	s3cmd -c ~/.s3cfg_certificate_object get -r "s3://certbucket/$DOMAIN_NAME/" "/etc/letsencrypt/archive/$DOMAIN_NAME/"
+	find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "*chain*" -or -name "*cert*" -exec chmod 644 {} +
+	find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "*priv*" -exec chmod 600 {} +
+	mkdir -p "/etc/letsencrypt/live/$DOMAIN_NAME"
 
- cert=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "cert*.pem" | tail -n 1))
- ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$cert" "/etc/letsencrypt/live/$DOMAIN_NAME/$cert"
+	cert=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "cert*.pem" | tail -n 1))
+	ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$cert" "/etc/letsencrypt/live/$DOMAIN_NAME/cert.pem"
 
- chain=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "chain*.pem" | tail -n 1))
- ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$chain" "/etc/letsencrypt/live/$DOMAIN_NAME/$chain"
+	chain=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "chain*.pem" | tail -n 1))
+	ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$chain" "/etc/letsencrypt/live/$DOMAIN_NAME/chain.pem"
 
- fullchain=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "fullchain*.pem" | tail -n 1))
- ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$fullchain" "/etc/letsencrypt/live/$DOMAIN_NAME/$fullchain"
+	fullchain=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "fullchain*.pem" | tail -n 1))
+	ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$fullchain" "/etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem"
 
- privkey=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "privkey*.pem" | tail -n 1))
- ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$privkey" "/etc/letsencrypt/live/$DOMAIN_NAME/$privkey"
+	privkey=$(basename $(find /etc/letsencrypt/archive/$DOMAIN_NAME/ -type f -name "privkey*.pem" | tail -n 1))
+	ln -s "/etc/letsencrypt/archive/$DOMAIN_NAME/$privkey" "/etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem"
 
+	exit_code_certbot=0
+ fi
 fi
+
 # if [[ $? -ne 0 ]]; then
 # 	echo "Warning: install ssl certbot script fail!"
 # 	exit 1
