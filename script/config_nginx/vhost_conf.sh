@@ -155,7 +155,8 @@ nginx_test=$(nginx -t 2>&1)
 if [[ $nginx_test =~ ok || $nginx_test =~ successful ]]; then
     echo "Info: The configuration is ok and Nginx test successful"
     # After know that test successfull, activate vhost
-    ln -s /etc/nginx/sites-available/$DOMAIN_NAME.conf /etc/nginx/sites-enabled
+    [ ! -f "/etc/nginx/sites-available/$DOMAIN_NAME" ] && ln -s /etc/nginx/sites-available/$DOMAIN_NAME.conf /etc/nginx/sites-enabled
+	sleep 3
 	/usr/bin/systemctl start nginx
 else
     echo "Error: configuration error and nginx test is not successful! Check configuration again"
@@ -164,6 +165,7 @@ fi
 
 if [ -z "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/fullchain.pem)" ] && [ -z  "$(s3cmd -c ~/.s3cfg_certificate_object ls s3://certbucket/$DOMAIN_NAME/privkey.pem)" ]; then
  ./install_ssl_certbot.sh "$DOMAIN_NAME" "$EMAIL" "$DOC_ROOT" ; exit_code_certbot=$?
+ sleep 3
  s3cmd -c ~/.s3cfg_certificate_object put -r "/etc/letsencrypt/live/$DOMAIN_NAME/*" s3://certbucket/$DOMAIN_NAME/
 else
  exit_code_certbot=0
