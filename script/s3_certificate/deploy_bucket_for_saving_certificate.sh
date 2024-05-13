@@ -59,9 +59,14 @@ set -- "${POSITIONAL_ARGS[@]}" #restore positional parameters--
 HOST_BUCKET="%(bucket)s.$HOST"
 #echo "$HOST_BUCKET"
 
+# update & upgrade & install s3cmd/etc/letsencrypt/live/wp4.nizarakbar.com/fullchain.pem
+export DEBIAN_FRONTEND=noninteractive
 sed -i "/#\$nrconf{restart} = 'i';/s/.*/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf
 sed -i "/#\$nrconf{kernelhints} = -1;/s/.*/\$nrconf{kernelhints} = -1;/" /etc/needrestart/needrestart.conf
+
+apt-get update -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --force-yes -y --allow-change-held-packages && apt-get upgrade -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --force-yes -y --allow-change-held-packages  
 apt -o Apt::Get::Assume-Yes=true install s3cmd > /dev/null 2>&1
+
 if [[ $? -eq 0 ]] 
 then
     echo "$(date '+%d/%b/%Y:%T') Info: Install s3cmd Success"
@@ -72,6 +77,7 @@ else
 fi
 sed -i "/\$nrconf{restart} = 'a';/s/.*/#\$nrconf{restart} = 'i';/" /etc/needrestart/needrestart.conf
 sed -i "/\$nrconf{kernelhints} = -1;/s/.*/#\$nrconf{kernelhints} = -1;/" /etc/needrestart/needrestart.conf
+unset DEBIAN_FRONTEND
 s3cmd -vvv --configure --secret_key="$SECRET_KEY" --access_key="$ACCESS_KEY" --host="$HOST" --host-bucket="$HOST_BUCKET" -s --dump-config > .s3cfg_certificate_object
 
 #Create bucket

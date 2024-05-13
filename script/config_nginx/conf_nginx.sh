@@ -58,11 +58,12 @@ fi
 
 . ./fastcgi_cache_conf.sh
 
+. ./nginx_main_conf.sh
+
 if [ -n "$DOMAIN_NAME" ]; then
     ./vhost_conf.sh -d "$DOMAIN_NAME" -e "$EMAIL"
 fi
 
-. ./nginx_main_conf.sh
 
 nginx_test=$(nginx -t 2>&1)
 if [[ $nginx_test =~ ok || $nginx_test =~ successful ]]; then

@@ -15,7 +15,7 @@ on:
     
 jobs:
   nginx_wordpress:
-          name: provision nginx and wordpress to ec2-provision
+          name: provision nginx and wordpress to vm nevacloud
           runs-on: ubuntu-latest
           env:
             SECRET_KEY: ${{ secrets.SECRET_KEY }}
@@ -49,18 +49,24 @@ jobs:
                 echo "Appending ssh-keyscan result to known-hosts"
                 mkdir ~/.ssh
                 chmod 700 ~/.ssh
-                ssh-keyscan -H -p $PORT_SSH $PUBLIC_IP >> ~/.ssh/known_hosts
+                for i in $PUBLIC_IPS; do
+                  ssh-keyscan -H -p $PORT_SSH $i >> ~/.ssh/known_hosts
+                done
+
                 chmod 600 ~/.ssh/known_hosts
                 ls -l ~/.ssh/known_hosts
                 echo -e "Host *\n\tGSSAPIAuthentication yes\n\tServerAliveInterval 600\n\tTCPKeepAlive yes\n\tIPQoS=throughput" > ~/.ssh/config
                 chmod 600 ~/.ssh/config
-                for i in "$PUBLIC_IPS"; do
+                for i in $PUBLIC_IPS; do
                   echo "Deploy scripts to $i..."
-                  rsync -avzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/"
+                  rsync -PavzqR script -e "ssh -p ${PORT_SSH}" "$USERNAME_VM@$i:~/" > log_rsync
                   [[ $? -ne 0 ]] && echo "Warning: rsync failed!" 
-                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
-                  ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
-                  [[ $? -ne 0 ]] && echo "Warning: ssh executing mv failed!"
+
+                  cat log_rsync
+
+                  # ssh -p $PORT_SSH $USERNAME_VM@$i "sudo rm -rf /root/script" > /dev/null 2>&1
+                  # ssh -p $PORT_SSH $USERNAME_VM@$i "sudo mv script /root"
+                  # [[ $? -ne 0 ]] && echo "Warning: ssh executing mv failed!"
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo chown root:root /root/script -R"
                   [[ $? -ne 0 ]] && echo "Warning: ssh executing chown failed!"
                   ssh -p $PORT_SSH $USERNAME_VM@$i "sudo find /root/script -type f -exec chmod 755 {} +"
@@ -75,18 +81,35 @@ jobs:
   test_curl:
       runs-on: ubuntu-latest
       needs: [nginx_wordpress]
+      env:
+        PUBLIC_IPS: ${{ vars.PUBLIC_IPS }}
+        DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
       permissions:
           contents: read
           pull-requests: write
       steps:
+        - name: check if certificate is valid lets encrypt
+          run: |
+            # check certificate is valid Let's Encrypt
+            for i in $PUBLIC_IPS; do
+              issuer_org=$(curl "https://$i:443" -H 'Host: $DOMAIN_NAME' -L -vvk -s 2>&1 | grep "issuer:" | sed -E "s/.*?issuer: C=US; O=(.*?); CN=R3\$/\1/g")
+              if [ -n "$issuer_org" ] && [[ "$issuer_org" == "Let's Encrypt" ]]; then
+                echo "Certificate Issuer Organization: $issuer_org"
+                exit 0
+              else
+                echo "SSL is not installed"
+                exit 1
+              fi
+            done
         - name: test curl TTFB
-          env:
-            DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
           run: |
-            curl -w "Connect time: %{time_connect}\nTime to first byte: %{time_starttransfer}\nTotal: %{time_total}" -o /dev/null -sL "http://$DOMAIN_NAME"
+            # test https from IP with Header Host, because https need to be configured manually in Load Balancer
+            for i in $PUBLIC_IPS; do
+              curl -w "Connect time: %{time_connect}\nTime to first byte: %{time_starttransfer}\nTotal: %{time_total}" -o /dev/null -k -sL "https://$i:443" -H 'Host: $DOMAIN_NAME'
+            done
         - name: test curl other timings
-          env:
-            DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
           run: |
-            curl -w "time_appconnect: %{time_appconnect}\ntime_connect: %{time_connect}\ntime_namelookup: %{time_namelookup}\ntime_pretransfer: %{time_pretransfer}\ntime_redirect: %{time_redirect}\ntime_starttransfer: %{time_starttransfer}\ntime_total: %{time_total}\n" -o /dev/null -sL "http://$DOMAIN_NAME"
-
+            # test https from IP with Header Host, because https need to be configured manually in Load Balancer
+            for i in $PUBLIC_IPS; do
+              curl -w "time_appconnect: %{time_appconnect}\ntime_connect: %{time_connect}\ntime_namelookup: %{time_namelookup}\ntime_pretransfer: %{time_pretransfer}\ntime_redirect: %{time_redirect}\ntime_starttransfer: %{time_starttransfer}\ntime_total: %{time_total}\n" -o /dev/null -k -sL "https://$i:443" -H 'Host: $DOMAIN_NAME'
+            done
